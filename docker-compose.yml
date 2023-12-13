@@ -31,10 +31,10 @@ services:
       WEBPASSWORD: [redacted]
       PIHOLE_DNS_: "10.0.0.2"
       DHCP_ACTIVE: "true"
-      DHCP_START: 192.168.1.100
+      DHCP_START: 192.168.1.100 # Reserving 1-99 for devices with static IP
       DHCP_END: 192.168.1.255
       DHCP_ROUTER: 192.168.1.1
-      DHCP_rapid_commit: "true"
+      DHCP_rapid_commit: "true" # otherwise iPhone's don't like it
       PIHOLE_DOMAIN: home
       DNSMASQ_LISTENING: single
       INTERFACE: eth1
