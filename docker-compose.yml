@@ -1,0 +1,105 @@
+version: "3"
+
+services:
+  cloudflared:
+    container_name: cloudflared
+    restart: unless-stopped
+    # Cloudflared doesn't have an armvf image, so we build from source
+    build: https://github.com/cloudflare/cloudflared.git
+    command: proxy-dns
+    environment:
+      TUNNEL_DNS_UPSTREAM: 
+"https://1.1.1.1/dns-query,https://1.0.0.1/dns-query,https://9.9.9.9/dns-query,https://149.112.112.9/dns-query"
+      TUNNEL_DNS_ADDRESS: "0.0.0.0"
+      TUNNEL_DNS_PORT: "53"
+
+    # I'm pretty sure cloudflared doesn't use the bootstrap server, so we 
+define it here too
+    dns:
+      - 1.1.1.1
+      - 1.0.0.1
+    networks:
+      internal:
+        ipv4_address: 10.0.0.2
+    healthcheck:
+      test: ["CMD", "cloudflared", "version"]
+
+  pihole:
+    container_name: pihole
+    image: pihole/pihole:latest
+    environment:
+      TZ: Europe/Amsterdam
+      WEBPASSWORD: pihole@piblanko
+      PIHOLE_DNS_: "10.0.0.2"
+      DHCP_ACTIVE: "true"
+      DHCP_START: 192.168.1.100
+      DHCP_END: 192.168.1.255
+      DHCP_ROUTER: 192.168.1.1
+      DHCP_rapid_commit: "true"
+      PIHOLE_DOMAIN: home
+      DNSMASQ_LISTENING: single
+      INTERFACE: eth1
+    # Volumes store your data between container upgrades
+    volumes:
+      - './etc-pihole/:/etc/pihole/'
+      - './etc-dnsmasq.d/:/etc/dnsmasq.d/'
+    # Recommended but not required (DHCP needs NET_ADMIN)
+    #   https://github.com/pi-hole/docker-pi-hole#note-on-capabilities
+    cap_add:
+      - NET_ADMIN
+    networks:
+      # macvlan is in the same subnet as router. 192.168.1.2 is used by 
+piblanko
+      macvlan:
+        ipv4_address: 192.168.1.3
+      internal:
+        ipv4_address: 10.0.0.3
+    # {hostname} will resolve to 0.0.0.0, will use local dns instead
+    hostname: _pihole
+    dns:
+      - "10.0.0.2"
+    ports:
+      - 443/tcp
+      - 53/tcp
+      - 53/udp
+      - 67/udp
+      - 80/tcp
+    depends_on:
+      - cloudflared
+    restart: unless-stopped
+
+  homeassistant:
+    container_name: homeassistant
+    image: ghcr.io/home-assistant/home-assistant:stable
+    volumes:
+      - './homeassistant-config:/config'
+      - '/etc/localtime:/etc/localtime:ro'
+    devices:
+      - '/dev/ttyUSB0:/dev/ttyUSB0'
+      # - 
+'/dev/serial/by-id/usb-ITEAD_SONOFF_Zigbee_3.0_USB_Dongle_Plus_V2_20230508143418-if00:/dev/ttyACM0'
+      - '/dev/ttyACM0:/dev/ttyACM0'
+    environment:
+      TZ: Europe/Amsterdam
+    networks:
+      macvlan:
+        ipv4_address: 192.168.1.4
+    hostname: pihole
+    restart: unless-stopped
+
+networks:
+  internal:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.0.0.0/29
+  macvlan:
+    driver: macvlan
+    driver_opts:
+      parent: eth0
+    ipam:
+      config:
+        - subnet: 192.168.1.0/24
+          ip_range: 192.168.1.0/24
+          gateway: 192.168.1.1
+
