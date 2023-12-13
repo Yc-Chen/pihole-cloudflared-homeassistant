@@ -29,7 +29,7 @@ define it here too
     image: pihole/pihole:latest
     environment:
       TZ: Europe/Amsterdam
-      WEBPASSWORD: pihole@piblanko
+      WEBPASSWORD: [redacted]
       PIHOLE_DNS_: "10.0.0.2"
       DHCP_ACTIVE: "true"
       DHCP_START: 192.168.1.100
