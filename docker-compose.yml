@@ -8,8 +8,7 @@ services:
     build: https://github.com/cloudflare/cloudflared.git
     command: proxy-dns
     environment:
-      TUNNEL_DNS_UPSTREAM: 
-"https://1.1.1.1/dns-query,https://1.0.0.1/dns-query,https://9.9.9.9/dns-query,https://149.112.112.9/dns-query"
+      TUNNEL_DNS_UPSTREAM: "https://1.1.1.1/dns-query,https://1.0.0.1/dns-query,https://9.9.9.9/dns-query,https://149.112.112.9/dns-query"
       TUNNEL_DNS_ADDRESS: "0.0.0.0"
       TUNNEL_DNS_PORT: "53"
 
@@ -72,6 +71,7 @@ services:
     volumes:
       - './homeassistant-config:/config'
       - '/etc/localtime:/etc/localtime:ro'
+      - './homeassistant-media:/media'
     devices:
       - '/dev/ttyUSB0:/dev/ttyUSB0'
       - '/dev/ttyACM0:/dev/ttyACM0'
@@ -81,6 +81,23 @@ services:
       macvlan:
         ipv4_address: 192.168.1.4
     hostname: pihole
+    restart: unless-stopped
+
+  # Comment this out if you don't need psa_car_controller
+  # See more at https://github.com/flobz/psa_car_controller
+  psacarcontroller:
+    container_name: psacarcontroller
+    image: flobz/psa_car_controller
+    environment:
+      PSACC_PORT: 80
+    volumes:
+      - './psa_car_controller-config:/config'
+    ports:
+      - 80/tcp
+    networks:
+      macvlan:
+        ipv4_address: 192.168.1.5
+    hostname: car
     restart: unless-stopped
 
 networks:
@@ -98,4 +115,3 @@ networks:
         - subnet: 192.168.1.0/24
           ip_range: 192.168.1.0/24
           gateway: 192.168.1.1
-
